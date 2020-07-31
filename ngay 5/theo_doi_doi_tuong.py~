@@ -1,0 +1,76 @@
+# coding: utf-8
+from collections import deque
+from imutils.video import VideoStream
+import numpy as np
+import argparse
+import cv2
+import imutils
+import time
+
+
+#Xây dựng các tham số tùy chọn và lấy tham số tùy chọn
+tuy_chon = argparse.ArgumentParser()
+tuy_chon.add_argument(
+        "-v",
+        "--video",
+        help="Đường dẫn tệp video (tùy chọn)",
+        )
+tuy_chon.add_argument(
+        '-b',
+        '--buffer',
+        type=int,
+        default=64,
+        help='kích thước tối đa của vùng đệm',
+        )
+cac_tuy_chon = vars(tuy_chon.parse_args())
+
+#Xác định ranh giới trên và dưới của màu xanh lục theo phổ màu HSV
+#Sau đó khởi tạo danh sách các điểm đã theo dõi
+ranh_gioi_duoi = (29, 86, 6)
+ranh_gioi_tren = (64, 255, 255)
+pts = deque(maxlen=cac_tuy_chon['buffer'])
+
+#Nếu đường dẫn tệp video không được đưa ra, lấy hình ảnh từ camera
+if not cac_tuy_chon.get('video', False):
+    video = VideoStream(src=0).start()
+#Nếu có đường dẫn, lấy tệp video
+else:
+    video = cv2.VideoCapture(cac_tuy_chon['video'])
+
+#Đợi camera hoặc video được tải vào
+time.sleep(2.0)
+
+#Tạo vòng lặp vô hạn
+while True:
+    #Lấy khung hình hiện tại
+    khung_hinh = video.read()
+
+    #Tải khung hình từ camera hoặc tệp video
+    khung_hinh = khung_hinh[1] if cac_tuy_chon.get('video', False) else khung_hinh
+
+    #Nếu đang xem video mà không có khung hình nào tức là video đã hết
+    if khung_hinh is None:
+        break
+    #Chỉnh kích thước khung hình, làm mịn, chuyển sang hệ màu HSV
+    khung_hinh = imutils.resize(khung_hinh, width=600)
+    lam_min = cv2.GaussianBlur(khung_hinh, (11, 11), 0)
+    hsv = cv2.cvtColor(lam_min, cv2.COLOR_BGR2HSV)
+
+    #Xây dựng một mặt nạ cho màu xanh lục, sau đó thực hiện giãn và làm mịn
+    #viền để loại bỏ các hạt bụi nhỏ trong mặt nạ
+    mat_na = cv2.inRange(hsv, ranh_gioi_duoi, ranh_gioi_tren)
+    mat_na = cv2.erode(mat_na, None, iterations=2) #Làm mịn đường viền
+    mat_na = cv2.dilate(mat_na, None, iterations=2) #Loại bỏ bụi ở trong
+
+    #Hiển thị kết quả
+    cv2.imshow('khung hinh', khung_hinh)
+    key = cv2.waitKey(1) & 0xFF
+
+    #Ấn 'q' để  thoát chương trình
+    if key == ord('q'):
+        print('[INFO] Thoát chương trình')
+        break
+
+#Dọn dẹp chương trình
+cv2.destroyAllWindows()
+#video.stop()

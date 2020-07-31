@@ -1,0 +1,9 @@
+opencv-contrib-python
+imutils
+dlib
+playsound
+tensorflow
+keras
+sklearn
+requests
+matplotlib
